@@ -62,21 +62,21 @@ func TestPoolDefaultsToOneWorker(t *testing.T) {
 }
 
 func TestSubmitConcurrentShutdown(t *testing.T) {
-// Run many goroutines submitting while Shutdown fires — should never panic
-for iter := 0; iter < 100; iter++ {
-pool := worker.NewPool(2)
-var wg sync.WaitGroup
-for i := 0; i < 10; i++ {
-wg.Add(1)
-go func() {
-defer wg.Done()
-pool.Submit(func(ctx context.Context) error {
-time.Sleep(time.Millisecond)
-return nil
-})
-}()
-}
-pool.Shutdown()
-wg.Wait()
-}
+	// Run many goroutines submitting while Shutdown fires — should never panic
+	for iter := 0; iter < 100; iter++ {
+		pool := worker.NewPool(2)
+		var wg sync.WaitGroup
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pool.Submit(func(ctx context.Context) error {
+					time.Sleep(time.Millisecond)
+					return nil
+				})
+			}()
+		}
+		pool.Shutdown()
+		wg.Wait()
+	}
 }

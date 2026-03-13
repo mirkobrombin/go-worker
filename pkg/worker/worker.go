@@ -50,7 +50,8 @@ func (p *Pool) worker() {
 	}
 }
 
-// Submit enqueues a task for execution and returns false when the pool is closed.
+// Submit enqueues a task for execution. Returns false if the pool is shut down
+// or shutting down; the task is not executed in that case.
 func (p *Pool) Submit(task Task) bool {
 	select {
 	case p.tasks <- task:
@@ -60,7 +61,9 @@ func (p *Pool) Submit(task Task) bool {
 	}
 }
 
-// Shutdown stops accepting new tasks, drains queued work, and waits for workers.
+// Shutdown stops accepting new tasks and waits for in-progress work to finish.
+// The task channel is unbuffered, so no tasks can be pending pickup when done
+// is closed — any Submit in progress will observe done and return false.
 func (p *Pool) Shutdown() {
 	p.once.Do(func() {
 		close(p.done)
