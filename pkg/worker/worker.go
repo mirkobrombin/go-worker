@@ -18,7 +18,15 @@ type Pool struct {
 	once   sync.Once
 }
 
-// NewPool creates a pool with n workers.
+// NewPool creates a fixed-size worker pool of n goroutines.
+//
+// Example:
+//
+//	pool := worker.NewPool(4)
+//	defer pool.Shutdown()
+//	pool.Submit(func(ctx context.Context) error {
+//		return doWork(ctx)
+//	})
 func NewPool(n int) *Pool {
 	if n <= 0 {
 		n = 1
@@ -38,6 +46,7 @@ func NewPool(n int) *Pool {
 	return p
 }
 
+// worker pulls tasks from the tasks channel until done is closed.
 func (p *Pool) worker() {
 	defer p.wg.Done()
 	for {
