@@ -12,11 +12,9 @@ type Task func(context.Context) error
 type Pool struct {
 	wg     sync.WaitGroup
 	tasks  chan Task
+	done   chan struct{}
 	cancel context.CancelFunc
 	ctx    context.Context
-
-	mu     sync.RWMutex
-	closed bool
 	once   sync.Once
 }
 
@@ -27,7 +25,12 @@ func NewPool(n int) *Pool {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	p := &Pool{tasks: make(chan Task), cancel: cancel, ctx: ctx}
+	p := &Pool{
+		tasks:  make(chan Task),
+		done:   make(chan struct{}),
+		cancel: cancel,
+		ctx:    ctx,
+	}
 	for i := 0; i < n; i++ {
 		p.wg.Add(1)
 		go p.worker()
@@ -37,33 +40,30 @@ func NewPool(n int) *Pool {
 
 func (p *Pool) worker() {
 	defer p.wg.Done()
-	for task := range p.tasks {
-		_ = task(p.ctx)
+	for {
+		select {
+		case task := <-p.tasks:
+			_ = task(p.ctx)
+		case <-p.done:
+			return
+		}
 	}
 }
 
 // Submit enqueues a task for execution and returns false when the pool is closed.
 func (p *Pool) Submit(task Task) bool {
-	p.mu.RLock()
-	if p.closed {
-		p.mu.RUnlock()
+	select {
+	case p.tasks <- task:
+		return true
+	case <-p.done:
 		return false
 	}
-	tasks := p.tasks
-	p.mu.RUnlock()
-
-	tasks <- task
-	return true
 }
 
 // Shutdown stops accepting new tasks, drains queued work, and waits for workers.
 func (p *Pool) Shutdown() {
 	p.once.Do(func() {
-		p.mu.Lock()
-		p.closed = true
-		close(p.tasks)
-		p.mu.Unlock()
-
+		close(p.done)
 		p.wg.Wait()
 		p.cancel()
 	})
