@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/mirkobrombin/go-worker/pkg/worker"
 )
@@ -57,5 +58,25 @@ func TestPoolDefaultsToOneWorker(t *testing.T) {
 	pool.Shutdown()
 	if count != 1 {
 		t.Fatalf("executed tasks = %d, want %d", count, 1)
+	}
+}
+
+func TestSubmitConcurrentShutdown(t *testing.T) {
+	// Run many goroutines submitting while Shutdown fires — should never panic
+	for iter := 0; iter < 100; iter++ {
+		pool := worker.NewPool(2)
+		var wg sync.WaitGroup
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				pool.Submit(func(ctx context.Context) error {
+					time.Sleep(time.Millisecond)
+					return nil
+				})
+			}()
+		}
+		pool.Shutdown()
+		wg.Wait()
 	}
 }
