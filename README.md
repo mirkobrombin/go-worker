@@ -1,5 +1,8 @@
 # Go Worker
 
+> [!CAUTION]
+> go-worker is now part of the [go-foundation](https://github.com/mirkobrombin/go-foundation) framework. The v1.0.0 release mirrors go-worker v0.1.1, but future versions may introduce breaking changes. Please migrate your project.
+
 A compact **worker pool** for Go applications that want predictable task execution with graceful shutdown semantics.
 
 ## Features
